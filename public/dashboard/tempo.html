@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <link rel="shortcut icon" href="../assets/Sekiro-logo-aba.png" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sekiro Fansite</title>
+
+
+    <link rel="stylesheet" href="./../css/dashboards.css">
+    <link rel="stylesheet" href="./../css/estilo.css" />
+
+    <script src="../js/sessao.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body onload="validarSessao(); carregarDados();">
+
+    <div class="janela">
+
+        <div class="header-left dash-header">
+
+            <h1>Sekiro Fansite</h1>
+
+            <div class="hello">
+                <h3>Olá, <span id="b_usuario">usuário</span>!</h3>
+            </div>
+
+            <div class="btn-nav">
+                <h3>Inicial</h3>
+            </div>
+
+            <div class="btn-nav-white">
+                <a href="./creditos.html">
+                    <h3>Créditos</h3>
+                </a>
+            </div>
+
+            <div class="btn-logout" onclick="limparSessao()">
+                <h3>Sair</h3>
+            </div>
+
+        </div>
+
+        <div class="dash">
+        <div class="conteudo">
+            <h2>Registrar tempo de jogo</h2><br>
+            Insira seu tempo de jogo: <input id="ipt_horas" type="number" placeholder="Ex: 18 horas"> <br>
+            <button class="botao" onclick="registrar()">Registrar</button> <br>
+            <div id="divMsg" class="mensagem"></div>
+        </div>
+
+        </div>
+
+        <div id="blocoDados">
+            <h2>Seus dados</h2>
+            <div class="card">
+                Último tempo registrado: <span id="sp_ultimo"></span> <br>
+                Média geral dos usuarios: <span id="sp_media"></span> <br>
+                Quantidade total de registros: <span id="sp_total"></span>
+            </div>
+            <div class="card">
+                Tempo médio de gameplay até zerar: 30 horas <br>
+                Tempo médio para platinar: 70 horas <br>
+                
+            </div>
+        </div>
+
+        <div id="blocoGraficos">
+            <h2>Comparação</h2>
+            <canvas id="graficoComparacao"></canvas>
+            
+            <h2>Gráfico de horas</h2>
+            <canvas id="graficoHistorico"></canvas>
+        </div>
+
+
+        <div id="blocoRanking">
+            <h2>Ranking dos jogadores</h2>
+            <div class="card" id="divRanking"></div>
+        </div>
+
+    </div>
+
+</body>
+
+<script>
+
+var graficoComparacao = "";
+var dadosComparacao = {
+    labels: ["Seu progresso", "Média Geral"],
+    datasets: [{
+        label: "Horas jogadas",
+        data: [0, 0],
+        backgroundColor: "#ff6f00",
+        barThickness: 20
+    }]
+};
+
+var graficoHistorico = "";
+var dadosHistorico = {
+    labels: [],
+    datasets: [{
+        label: "Horas jogadas",
+        data: [],
+    }]
+};
+
+
+
+function registrar() {
+    var horas = Number(ipt_horas.value);
+    var idUsuario = sessionStorage.ID_USUARIO;
+    divMsg.innerHTML = "";
+
+    if (horas <= 0 ) {
+        divMsg.innerHTML = "Insira um valor válido!";
+        return;
+    }
+
+    fetch("/tempo/registrar", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            horasServer: horas,
+            idUsuarioServer: idUsuario
+        })
+    })
+    .then(function (resposta) {
+        if (resposta.ok) {
+            divMsg.innerHTML = "Tempo registrado!";
+            ipt_horas.value = "";
+            carregarDados();
+        } else {
+            divMsg.innerHTML = "Erro ao registrar tempo!";
+        }
+    })
+    .catch(function (erro) {
+        console.log("Erro:", erro);
+        divMsg.innerHTML = "Erro de comunicação!";
+    });
+}
+
+
+
+function carregarDados() {
+    var idUsuario = sessionStorage.ID_USUARIO;
+
+    fetch("/tempo/listar/" + idUsuario)
+    .then(function (resposta) {
+        return resposta.json();
+    })
+    .then(function (lista) {
+        atualizarEstatisticas(lista);
+        atualizarHistorico(lista);
+        desenharHistorico();
+    });
+
+    fetch("/tempo/media-geral")
+    .then(function (resposta) {
+        return resposta.json();
+    })
+    .then(function (media) {
+        if (media.length > 0) {
+            var mediaValor = Number(media[0]["media geral"]).toFixed(0);
+            sp_media.innerHTML = mediaValor + " horas";
+
+            dadosComparacao.datasets[0].data[1] = Number(mediaValor);
+            desenharComparacao();
+        }
+    });
+
+    fetch("/tempo/ranking")
+    .then(function (resposta) {
+        return resposta.json();
+    })
+    .then(function (ranking) {
+        montarRanking(ranking);
+    });
+}
+
+
+
+function atualizarEstatisticas(lista) {
+    if (lista.length == 0) {
+        document.getElementById("blocoDados").style.display = "none";
+        document.getElementById("blocoGraficos").style.display = "none";
+        document.getElementById("blocoRanking").style.display = "none";
+        return;
+    }
+
+    sp_ultimo.innerHTML = lista[0].horas_jogadas + " horas";
+    sp_total.innerHTML = lista.length + " registros";
+
+    dadosComparacao.datasets[0].data[0] = lista[0].horas_jogadas;
+
+    document.getElementById("blocoDados").style.display = "block";
+    document.getElementById("blocoGraficos").style.display = "block";
+    document.getElementById("blocoRanking").style.display = "block";
+}
+
+
+
+function desenharComparacao() {
+
+    if (graficoComparacao == "") {
+        graficoComparacao = new Chart(
+            document.getElementById("graficoComparacao"),
+            {
+                type: "bar",
+                data: dadosComparacao
+            }
+        );
+    } else {
+        graficoComparacao.data = dadosComparacao;
+        graficoComparacao.update();
+    }
+}
+
+function atualizarHistorico(lista) {
+    dadosHistorico.labels = [];
+    dadosHistorico.datasets[0].data = [];
+
+    for (var i = lista.length - 1; i >= 0; i--) {
+        var dataFormatada = lista[i].data_registrada.substring(0, 10);
+        dadosHistorico.labels.push(dataFormatada);
+        dadosHistorico.datasets[0].data.push(lista[i].horas_jogadas);
+    }
+}
+
+
+function desenharHistorico() {
+
+    if (graficoHistorico == "") {
+        graficoHistorico = new Chart(
+            document.getElementById("graficoHistorico"),
+            {
+                type: "line",
+                data: dadosHistorico
+            }
+        );
+
+    } else {
+        graficoHistorico.data = dadosHistorico;
+        graficoHistorico.update();
+    }
+}
+
+function montarRanking(lista) {
+    divRanking.innerHTML = "";
+
+    for (var i = 0; i < lista.length; i++) {
+        divRanking.innerHTML += 
+            (i + 1) + "º - " + lista[i].nome +
+            " → " + lista[i].total_horas + " horas<br>";
+    }
+}
+
+</script>
+
+</html>

@@ -117,11 +117,10 @@ body {
 
 .dash {
   width: 80%;
-  position: relative;
-  top: 0;
-  left: 20%;
+  margin-left: 20%;
   background-color: #161618;
-  height: 100vh;
+  min-height: 100vh;
+  padding: 20px;
   overflow: auto;
 }
 
@@ -166,25 +165,6 @@ body {
   font-weight: 800;
 }
 
-.perigo-frio {
-  background-color: #5c6bc0;
-}
-
-.perigo-quente {
-  background-color: #ff7043;
-}
-
-.alerta-frio {
-  background-color: #42a5f5;
-}
-
-.alerta-quente {
-  background-color: #ffee58;
-}
-
-.ideal {
-  background-color: #9ccc65;
-}
 
 .cards {
   display: flex;
@@ -321,8 +301,14 @@ body {
 }
 
 canvas {
-  width: 100% !important;
-  height: 100% !important;
+  width: 90%;
+  max-width: 600px;
+  height: 300px;
+  background-color: #1a1a1a;
+  padding: 10px;
+  border-radius: 12px;
+  display: block;
+  margin: 20px auto;
 }
 
 /* PAGINA DOS GRÁFICOS 2023 */
@@ -425,4 +411,21 @@ canvas {
   padding: 10px 15px;
   margin-bottom: 100px;
   cursor: pointer;
+}
+
+ .conteudo {
+            color:#ff6f00;
+        }
+        .card {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            border: 2px solid #444;
+        }
+        /* apaguei o canvas de baixo */
+        #blocoDados, #blocoGraficos, #blocoRanking {
+            width: 90%;
+            margin: 20px auto;
+            background-color: #161618;
+            color: #ff6f00;
 }
